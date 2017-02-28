@@ -29,7 +29,7 @@ run.stresstest <- function() {
 
     appDir <- system.file("shiny", package = "stresstest")
     if (appDir == "") {
-        stop("Could not find Shiny directory. Try re-installing `beanz`.",
+        stop("Could not find Shiny directory. Try re-installing `stresstest`.",
              call. = FALSE)
     }
 
