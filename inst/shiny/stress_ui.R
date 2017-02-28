@@ -10,11 +10,10 @@ get.consts <- reactive({
                     "Bias2", "MSE2", "SD2",
                     "BiasC", "MSEC", "SDC",
                     "Rej1", "Rej2", "RejC", "RejAny"),
-         designs=c("Bonferroni" = 1,
-                   "Optimized Bonferroni" = 2));
+         designs=c("Bonferroni" = "bon",
+                   "Optimized Bonferroni" = "bon.opt",
+                   "Optimized M-B" = "mb"))
 })
-
-
 
 ##----------------------------------------------------------------------------
 ##                           PANELS
@@ -49,14 +48,16 @@ tab.setting <- reactive({
                                         choices=c(0.05, 0.1, 0.2)),
                             sliderInput(inputId = "inPower", label="Power",
                                         value = 0.8, min = 0, max = 1, step = 0.05),
-                            radioButtons(inputId = "inMulti", label="Multiplicity adjustment",
-                                         choices = get.consts()$designs),
                             radioButtons(inputId = "inH0", label="Simulation Scenario",
                                          choices = c("Under global null hypothesis" = 1,
                                                      "Under alternative hypothesis" = 2))
                             ),
                      column(4,
                             h4("Sample Size"),
+                            div(actionButton("btnSize", "Compute"),
+                                style="margin-bottom:10px"),
+                            radioButtons(inputId = "inMulti", label="Multiplicity adjustment",
+                                         choices = get.consts()$designs),
                             htmlOutput("txtSmpSize")
                             )
                  )),
@@ -126,35 +127,22 @@ tab.main <- reactive({
 ##----------------------------------------------------------------------------
 
 get.par <- reactive({
-    list(
-        delta1 = input$inDelta1,
-        delta2 = input$inDelta2,
-        sigma  = input$inSigma,
-        pi1    = input$inPi,
-        alpha  = as.numeric(input$inAlpha),
-        beta   = 1 - input$inPower,
-        dpi    = input$inDelP,
-        npi    = input$inNP
-    )
+    userLog$lpar;
 })
 
 get.N <- reactive({
-    lpar <- get.par();
-    rst  <- list();
-    for (multi in 1:2) {
-        rst[[multi]]  <- r.getn.bf(lpar$delta1,
-                                   lpar$delta2,
-                                   lpar$sigma,
-                                   lpar$pi1,
-                                   lpar$alpha,
-                                   lpar$beta,
-                                   optimized = (2 == multi));
-    }
-
-    names(rst) <- names(get.consts()$designs);
-    rst
+    userLog$N;
 })
 
+get.allpi <- reactive({
+    pi1 <- get.par()$pi1;
+    dpi <- input$inDelP;
+    npi <- input$inNP;
+
+    seq(max(0, pi1 - dpi),
+        min(1, pi1 + dpi),
+        length.out = npi+1);
+})
 
 ##get utility without bcratio
 get.simu.rst <- reactive({
@@ -167,9 +155,7 @@ get.simu.rst <- reactive({
     isolate({
         sizen  <- get.N();
         lpar   <- get.par();
-        all.pi <- seq(max(0, lpar$pi1-lpar$dpi),
-                      min(1, lpar$pi1+lpar$dpi),
-                      length.out = lpar$npi+1);
+        all.pi <- get.allpi();
 
         if (1 == input$inH0) {
             delta1 <- 0;
@@ -199,7 +185,8 @@ get.simu.rst <- reactive({
                                                delta2,
                                                sizen[[j]]$N,
                                                all.pi[i],
-                                               sizen[[j]]$pars['sigma']);
+                                               sigma  = sizen[[j]]$pars['sigma'],
+                                               method = sizen[[j]]$method);
                 rst <- rbind(rst,
                              c(names(sizen)[j],
                                all.pi[i],

@@ -1,3 +1,4 @@
+require(ggplot2);
 
 ##-----------------------------------------------------------------------------------
 ##                     run Shiny Gui
@@ -52,7 +53,7 @@ get.alpha <- function(n, beta, delta, sigma, interval=c(0,1)) {
         uniroot(f.diff, interval=interval)$root;
     }, error = function (e) {
         print(e);
-        NULL;
+        NA;
     })
 
     rst
@@ -87,7 +88,11 @@ get.planned.size <- function(delta, sigma, alpha=0.05, beta=0.2, rr=1) {
 
 
 ##optimized and typical bonferonni
-r.getn.bf <- function(delta1, delta2, sigma, pi1, alpha=0.05, beta=0.2, optimized=FALSE) {
+r.getn.bf <- function(delta1, delta2, sigma, pi1,
+                      method = c("bon", "bon.opt", "mb"),
+                      alpha=0.05, beta=0.2, alpha.min=0.0001) {
+
+    method <- match.arg(method);
 
     ##get sample sizes for all populations
     f.bf <- function() {
@@ -104,73 +109,86 @@ r.getn.bf <- function(delta1, delta2, sigma, pi1, alpha=0.05, beta=0.2, optimize
           size.c);
     }
 
-    f.n <- function(cur.n) {
+    f.n.bo <- function(cur.n) {
         cur.n1 <- round(cur.n * pi1);
         cur.n2 <- cur.n - cur.n1;
 
         alpha1 <- get.alpha(cur.n1, beta, delta1, sigma);
-        if (is.null(alpha1))
-            return(NULL);
-        if (alpha1 > alpha)
-            return(NULL);
-
         alpha2 <- get.alpha(cur.n2, beta, delta2, sigma);
-        if (is.null(alpha2))
-            return(NULL);
-        if (alpha1+alpha2 > alpha)
-            return(NULL);
-
         alphac <- get.alpha(cur.n, beta, delta, sigma);
-        if (is.null(alphac))
-            return(NULL);
-        if (alpha1+alpha2+alphac > alpha)
+        a3     <- c(alpha1, alpha2, alphac);
+
+        if (any(is.na(a3)) |
+            any(a3 < alpha.min) |
+            sum(a3, na.rm=TRUE) > alpha)
             return(NULL);
 
-        c(cur.n1, cur.n2, cur.n,  alpha1, alpha2, alphac);
+        c(cur.n1, cur.n2, cur.n, a3);
     }
 
-    delta     <- delta1 * pi1 + delta2 * (1-pi1);
-    init.n    <- f.bf();
+    f.n.mb <- function(cur.n) {
 
-    ##naive bonferonni adjustment
-    if (!optimized) {
-        rst <- list(optimized = F,
-                    method    = "Bonferroni",
-                    N         = init.n[1],
-                    alpha3    = rep(alpha/3,3),
-                    beta      = beta,
-                    alpha     = alpha,
-                    pars      = c(delta1=delta1, delta2=delta2, sigma=sigma, pi1=pi1),
-                    Nall      = init.n[2:4]);
-        return(rst);
-    }
+        a3 <- IfPowerSatisfy(pi1, delta1, delta2, sigma, cur.n,
+                             alpha, beta, alpha.min);
 
-    init.n    <- init.n[1];
-    rst       <- f.n(init.n);
-    cur.range <- c(0, init.n);
-    cur.n     <- ceiling(mean(cur.range));
-
-    while (cur.n < cur.range[2]) {
-        cur.rst <- f.n(cur.n);
-        if (is.null(cur.rst)) {
-            cur.range[1] <- cur.n;
-        } else {
-            cur.range[2] <- cur.n;
-            last.rst     <- cur.rst;
+        if (is.null(a3)) {
+            return(NULL);
         }
 
-        ##mid point
-        cur.n <- ceiling(mean(cur.range));
+        cur.n1 <- round(cur.n * pi1);
+        cur.n2 <- cur.n - cur.n1;
+        c(cur.n1, cur.n2, cur.n, a3);
     }
 
-    rst <- list(optimized = T,
-                method    = "Optimized Bonferroni",
-                N         = last.rst[3],
-                alpha3    = last.rst[4:6],
-                beta      = beta,
-                alpha     = alpha,
-                pars      = c(delta1=delta1, delta2=delta2, sigma=sigma, pi1=pi1),
-                Nall      = c(last.rst[1:3]))
+    delta  <- delta1 * pi1 + delta2 * (1-pi1);
+    init.n <- f.bf();
+
+    if ("bon" == method) {
+        ##naive bonferonni adjustment
+        rst <- list(N      = init.n[1],
+                    alpha3 = rep(alpha/3,3),
+                    Nall   = init.n[2:4]);
+    } else if ("bon.opt" == method |
+               "mb"      == method) {
+
+        if ("bon.opt" == method) {
+            ##optimized bonferonni
+            f.n <- f.n.bo;
+        } else {
+            ##mb method
+            f.n <- f.n.mb;
+        }
+
+        init.n.1  <- init.n[1];
+        rst       <- f.n(init.n.1);
+        cur.range <- c(0, init.n.1);
+        cur.n     <- ceiling(mean(cur.range));
+
+        while (cur.n < cur.range[2]) {
+            cur.rst <- f.n(cur.n);
+            if (is.null(cur.rst)) {
+                cur.range[1] <- cur.n;
+            } else {
+                cur.range[2] <- cur.n;
+                last.rst     <- cur.rst;
+            }
+
+            ##mid point
+            cur.n <- ceiling(mean(cur.range));
+        }
+
+        rst <- list(N      = last.rst[3],
+                    alpha3 = last.rst[4:6],
+                    Nall   = c(last.rst[1:3]))
+    }
+
+    rst <- c(rst,
+             list(method = method,
+                  beta   = beta,
+                  alpha  = alpha,
+                  pars   = c(delta1=delta1, delta2=delta2, sigma=sigma, pi1=pi1)
+                  ))
+    rst
 }
 
 ##use summary information to get zscore
@@ -179,7 +197,6 @@ get.zscore <- function(y1, y0) {
     eff.sd   <- sqrt(var(y1)/length(y1) + var(y0)/length(y0));
     zscore   <- eff.size / eff.sd;
     pval     <- 2*(min(1 - pnorm(zscore), pnorm(zscore)));
-
     c(ey=eff.size, sd=eff.sd, z=zscore, pval=pval)
 }
 
@@ -207,10 +224,13 @@ simu.trial <- function(delta1, delta2, n.perarm, pi1, sigma) {
     zs   <- get.zscore(c(y11, y12), c(y01, y02));
 
     c(zs.1["ey"],   zs.2["ey"],   zs["ey"],
-      zs.1["pval"], zs.2["pval"], zs["pval"]);
+      zs.1["pval"], zs.2["pval"], zs["pval"],
+      zs.1["z"],    zs.2["z"],    zs["z"]);
 }
 
-simu.single.setting <- function(n.rep, alpha, delta1, delta2, n.perarm, pi1, sigma, n.cores=4) {
+simu.single.setting <- function(n.rep, alpha, delta1, delta2,
+                                n.perarm, pi1, sigma,
+                                method=NULL, n.cores=4) {
 
     ##true
     te <- c(delta1, delta2, delta1*pi1 + delta2*(1-pi1));
@@ -233,11 +253,25 @@ simu.single.setting <- function(n.rep, alpha, delta1, delta2, n.perarm, pi1, sig
     }
 
     ## three hypothesis
-    s.rej <- NULL;
-    for (i in 1:3) {
-        cur.rej <- rst[,3+i] < alpha[i];
-        s.rej   <- cbind(s.rej, cur.rej);
+    if ("mb" == method) {
+        s.rej <- apply(rst, 1, function(x) {
+            cur.r <- NULL;
+            for (j in c("1", "2", "0")) {
+                cur.r <- c(cur.r,
+                           IfZstatInRejRegion(alpha, j, x[7:9]));
+            }
+            cur.r
+        })
+        s.rej <- t(s.rej);
+    } else {
+        s.rej <- NULL;
+        for (i in 1:3) {
+            cur.rej <- rst[,3+i] < alpha[i];
+            s.rej   <- cbind(s.rej, cur.rej);
+        }
     }
+
+
     srst <- c(srst, apply(s.rej, 2, mean));
 
     ## any hypothesis
@@ -265,9 +299,9 @@ plot.rst <- function(simu.rst, y.var, x.var = "Pi", n = 10) {
     simu.rst <- f.con(y.var, simu.rst);
 
 
-    p <- ggplot(simu.rst, aes_string(x.var, y.var, color="Design", group = "Design")) +
-        geom_line() +
-        scale_x_continuous(breaks = scales::pretty_breaks(n = n)) +
-        scale_y_continuous(breaks = scales::pretty_breaks(n = n));
+    p <- ggplot2::ggplot(simu.rst, ggplot2::aes_string(x.var, y.var, color="Design", group = "Design")) +
+        ggplot2::geom_line() +
+        ggplot2::scale_x_continuous(breaks = scales::pretty_breaks(n = n)) +
+        ggplot2::scale_y_continuous(breaks = scales::pretty_breaks(n = n));
     p
 }

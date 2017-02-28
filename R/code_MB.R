@@ -1,4 +1,4 @@
-IfPowerSatisfy <- function(pi.1,delta1,delta2,sigma,N,type1.error,beta,alpha.min = 0.0001){
+IfPowerSatisfy <- function(pi.1, delta1, delta2, sigma, N, type1.error, beta, alpha.min = 0.0001){
         ###functions
         #mean and covariate matrix under alternative
         ConvertToMuSigma <- function(pi.1,delta1,delta2,sigma,N){
@@ -175,9 +175,11 @@ IfPowerSatisfy <- function(pi.1,delta1,delta2,sigma,N,type1.error,beta,alpha.min
                         for (i in 1:number.of.cube){
                                 lower <- shape[[i]][,1]
                                 upper <- shape[[i]][,2]
-                                area <- area + pmvnorm(lower = lower, upper = upper, mean = mu[,(as.numeric(j)+1)],
-                                                       sigma = Sigma,
-                                                       algorithm=GenzBretz(abseps = 10^-10 ,maxpts=10^5))
+                                area <- area + mvtnorm::pmvnorm(lower = lower, upper = upper,
+                                                                mean = mu[,(as.numeric(j)+1)],
+                                                                sigma = Sigma,
+                                                                algorithm=mvtnorm::GenzBretz(abseps = 10^-10,
+                                                                                             maxpts=10^5))
                         }
                         return(as.numeric(area))
                 }
@@ -201,8 +203,7 @@ IfPowerSatisfy <- function(pi.1,delta1,delta2,sigma,N,type1.error,beta,alpha.min
                             return(alpha.star)
                 }
         }
-        return(NA);
-
+        return(NULL);
 }
 
 ###FUNCTION: if z statistics fall in the rejection region
