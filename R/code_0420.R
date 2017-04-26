@@ -1,4 +1,12 @@
-IfPowerSatisfy <- function(pi.1, delta1, delta2, sigma, N, type1.error, beta, alpha.min = 0.0001){
+##check if MB better than optimal Bon
+##take alpha as input, compute sample size (should be at least smaller than opt bon)
+##binary search for n still start at simple bon
+
+#result: opt bon vs. MB vs. MB using input alpha
+#when p=0.4, 232 vs. 250 vs.231
+#when p=0.7, 298 vs. 310 vs. 299
+
+IfPowerSatisfy.fix.alpha <- function(pi.1, delta1, delta2, sigma, N, beta, alpha.input){
         ###functions
         #mean and covariate matrix under alternative
         ConvertToMuSigma <- function(pi.1,delta1,delta2,sigma,N){
@@ -175,11 +183,7 @@ IfPowerSatisfy <- function(pi.1, delta1, delta2, sigma, N, type1.error, beta, al
                         for (i in 1:number.of.cube){
                                 lower <- shape[[i]][,1]
                                 upper <- shape[[i]][,2]
-                                area <- area + mvtnorm::pmvnorm(lower = lower, upper = upper,
-                                                                mean = mu[,(as.numeric(j)+1)],
-                                                                sigma = Sigma,
-                                                                algorithm=mvtnorm::GenzBretz(abseps = 10^-10,
-                                                                                             maxpts=10^5))
+                                area <- area + pmvnorm(lower = lower, upper = upper, mean = mu[,(as.numeric(j)+1)], sigma = Sigma,algorithm=GenzBretz(abseps = 10^-10 ,maxpts=10^5))
                         }
                         return(as.numeric(area))
                 }
@@ -189,25 +193,55 @@ IfPowerSatisfy <- function(pi.1, delta1, delta2, sigma, N, type1.error, beta, al
 
         mu <- ConvertToMuSigma(pi.1,delta1,delta2,sigma,N)$mu
         Sigma <- ConvertToMuSigma(pi.1,delta1,delta2,sigma,N)$Sigma
-        type1.error <- type1.error/2
 
-        #search over all possible alpha.star values
-        for(alpha.star.1 in seq(alpha.min,type1.error,by=0.005)){
-                for(alpha.star.2 in seq(alpha.min,type1.error-alpha.star.1,by=0.005)){
-                        alpha.star.0=type1.error-alpha.star.1-alpha.star.2
-                        alpha.star <- c(alpha.star.0,alpha.star.1,alpha.star.2)
-                        C <- alpha.matrix(alpha.star)
-                        if((PowerMB(C,mu,Sigma,"0") > beta)
-                           & (PowerMB(C,mu,Sigma,"1") > beta)
-                           & (PowerMB(C,mu,Sigma,"2") > beta))
-                            return(alpha.star)
-                }
-        }
-        return(NULL);
+        C <- alpha.matrix(alpha.input)
+        if((PowerMB(C,mu,Sigma,"0") > beta) & (PowerMB(C,mu,Sigma,"1") > beta) & (PowerMB(C,mu,Sigma,"2") > beta)) return(list(satisfy=TRUE))
+        else return(list(satisfy=FALSE))
 }
 
-###FUNCTION: if z statistics fall in the rejection region
-IfZstatInRejRegion <- function(alpha.star, j, z){
+
+SampleSizeMB.fix.alpha <- function(pi.1,delta.1,delta.2,sigma,alpha,beta,alpha.input){
+        SampleSizeBon <- function(pi.1,delta.1,delta.2,sigma,alpha,beta){
+                alpha <- alpha/2
+                alpha <- alpha/3 #bon adjustment, one-sided test
+                pi.1 <- pi.1
+                pi.2 <- 1-pi.1
+                delta.0 <- pi.1*delta.1+pi.2*delta.2
+                delta.1 <- delta.1
+                delta.2 <- delta.2
+                sigma <- sigma
+                n0.req <- (qnorm(1-alpha) + qnorm(beta))^2*sigma^2*4/(delta.0^2)
+                n1.req <- (qnorm(1-alpha) + qnorm(beta))^2*sigma^2*4/(delta.1^2)
+                n2.req <- (qnorm(1-alpha) + qnorm(beta))^2*sigma^2*4/(delta.2^2)
+                #satisfy all 3 power conditions
+                return(ceiling(max(n0.req,n1.req/pi.1,n2.req/pi.2)))
+        }
+        #search from size.bon
+        n.upper <- floor(SampleSizeBon(pi.1,delta.1,delta.2,sigma,alpha,beta))
+        n.lower <- 0
+        n.current <- ceiling((n.upper +n.lower)/2)
+        #current mu and Sigma
+        repeat{
+                temp <- IfPowerSatisfy.fix.alpha(pi.1,delta.1,delta.2,sigma,n.current,beta,alpha.input)
+                if(temp$satisfy){
+                        n.upper <- n.current
+                        n.current <- ceiling((n.upper +n.lower)/2)
+                        alpha.current <- temp$alpha
+                }
+                if(!temp$satisfy){
+                        n.lower <- n.current
+                        n.current <- ceiling((n.upper +n.lower)/2)
+                }
+                if(n.upper-n.lower <= 1) break
+        }
+
+        return(list(sample.size=n.upper))
+}
+
+###################simulation
+
+###FUNCTION: calculate rejection region
+RejRegion <- function(alpha.star,j){
         ###functions
         #convert to C
         alpha.matrix <- function(alpha.star){
@@ -341,6 +375,11 @@ IfZstatInRejRegion <- function(alpha.star, j, z){
 
         C <- alpha.matrix(alpha.star)
         rej.region <- RejRegionSingle(C,j)
+        rej.region
+}
+
+###FUNCTION: if z statistics fall in the rejection region
+IfInRejRegion <- function(rej.region,z){
         IfinCube <- function(i){
                 cube <- rej.region[[i]]
                 cube1 <-cube[1,]
@@ -349,13 +388,11 @@ IfZstatInRejRegion <- function(alpha.star, j, z){
                 if((z[1]>=cube1[1])&(z[1]<=cube1[2])&(z[2]>=cube2[1])&(z[2]<=cube2[2])&(z[3]>=cube3[1])&(z[3]<=cube3[2])) return(TRUE)
                 else return(FALSE)
         } #judge if in the single cube
-
         for (i in 1:length(rej.region)){
-            if (IfinCube(i))
-                return(TRUE) #if in one of the single cube, return
-            else
-                next() #if not, judge for next cube
+                if (IfinCube(i)) return(TRUE) #if in one of the single cube, return
+                else next() #if not, judge for next cube
         }
         #if not in any of the cubes, return false
         return(FALSE)
 }
+

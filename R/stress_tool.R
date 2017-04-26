@@ -11,7 +11,7 @@ require(ggplot2);
 #'
 #' @export
 #'
-run.stresstest <- function() {
+stShiny <- function() {
     if (!requireNamespace("shiny", quietly = TRUE)) {
         stop("Shiny needed for this function to work. Please install it.",
              call. = FALSE)
@@ -90,7 +90,10 @@ get.planned.size <- function(delta, sigma, alpha=0.05, beta=0.2, rr=1) {
 ##optimized and typical bonferonni
 r.getn.bf <- function(delta1, delta2, sigma, pi1,
                       method = c("bon", "bon.opt", "mb"),
-                      alpha=0.05, beta=0.2, alpha.min=0.0001) {
+                      alpha=0.05,
+                      beta=0.2,
+                      alpha.min   = 0.0001,
+                      alpha.input = NULL) {
 
     method <- match.arg(method);
 
@@ -109,6 +112,7 @@ r.getn.bf <- function(delta1, delta2, sigma, pi1,
           size.c);
     }
 
+    ##optimized bonferonni
     f.n.bo <- function(cur.n) {
         cur.n1 <- round(cur.n * pi1);
         cur.n2 <- cur.n - cur.n1;
@@ -126,46 +130,19 @@ r.getn.bf <- function(delta1, delta2, sigma, pi1,
         c(cur.n1, cur.n2, cur.n, a3);
     }
 
-    f.n.mb <- function(cur.n) {
-
-        a3 <- IfPowerSatisfy(pi1, delta1, delta2, sigma, cur.n,
-                             alpha, beta, alpha.min);
-
-        if (is.null(a3)) {
-            return(NULL);
-        }
-
-        cur.n1 <- round(cur.n * pi1);
-        cur.n2 <- cur.n - cur.n1;
-        c(cur.n1, cur.n2, cur.n, a3);
-    }
-
     delta  <- delta1 * pi1 + delta2 * (1-pi1);
     init.n <- f.bf();
-
     if ("bon" == method) {
         ##naive bonferonni adjustment
         rst <- list(N      = init.n[1],
                     alpha3 = rep(alpha/3,3),
                     Nall   = init.n[2:4]);
-    } else if ("bon.opt" == method |
-               "mb"      == method) {
-
-        if ("bon.opt" == method) {
-            ##optimized bonferonni
-            f.n <- f.n.bo;
-        } else {
-            ##mb method
-            f.n <- f.n.mb;
-        }
-
+    } else if ("bon.opt" == method) {
         init.n.1  <- init.n[1];
-        rst       <- f.n(init.n.1);
         cur.range <- c(0, init.n.1);
         cur.n     <- ceiling(mean(cur.range));
-
         while (cur.n < cur.range[2]) {
-            cur.rst <- f.n(cur.n);
+            cur.rst <- f.n.bo(cur.n);
             if (is.null(cur.rst)) {
                 cur.range[1] <- cur.n;
             } else {
@@ -179,15 +156,36 @@ r.getn.bf <- function(delta1, delta2, sigma, pi1,
 
         rst <- list(N      = last.rst[3],
                     alpha3 = last.rst[4:6],
-                    Nall   = c(last.rst[1:3]))
-    }
+                    Nall   = c(last.rst[1:3]));
 
-    rst <- c(rst,
-             list(method = method,
-                  beta   = beta,
-                  alpha  = alpha,
-                  pars   = c(delta1=delta1, delta2=delta2, sigma=sigma, pi1=pi1)
-                  ))
+    } else if ("mb" == method) {
+        cur.n <- SampleSizeMB.fix.alpha(pi.1    = pi1,
+                                        delta.1 = delta1,
+                                        delta.2 = delta2,
+                                        sigma   = sigma,
+                                        alpha   = alpha,
+                                        beta    = beta,
+                                        alpha.input = alpha.input)$sample.size;
+        rej.regions <- NULL;
+        for (j in c("0", "1", "2")) {
+            rej.regions[[j]] <- RejRegion(alpha.input, j);
+        }
+
+        rst <- list(N      = cur.n,
+                    alpha3 = alpha.input,
+                    Nall   = c(round(cur.n * pi1),
+                               cur.n - round(cur.n * pi1),
+                               cur.n),
+                    rej.regions = rej.regions);
+    }
+    rst$method <- method;
+    rst$pars   <- c(beta   = beta,
+                    alpha  = alpha,
+                    delta1 = delta1,
+                    delta2 = delta2,
+                    sigma  = sigma,
+                    pi1    = pi1);
+
     rst
 }
 
@@ -230,7 +228,7 @@ simu.trial <- function(delta1, delta2, n.perarm, pi1, sigma) {
 
 simu.single.setting <- function(n.rep, alpha, delta1, delta2,
                                 n.perarm, pi1, sigma,
-                                method=NULL, n.cores=4) {
+                                method=NULL, n.cores=4, rej.regions = NULL) {
 
     ##true
     te <- c(delta1, delta2, delta1*pi1 + delta2*(1-pi1));
@@ -258,7 +256,7 @@ simu.single.setting <- function(n.rep, alpha, delta1, delta2,
             cur.r <- NULL;
             for (j in c("1", "2", "0")) {
                 cur.r <- c(cur.r,
-                           IfZstatInRejRegion(alpha, j, x[7:9]));
+                           IfInRejRegion(rej.regions[[j]], x[c(9,7:8)]));
             }
             cur.r
         })
@@ -270,7 +268,6 @@ simu.single.setting <- function(n.rep, alpha, delta1, delta2,
             s.rej   <- cbind(s.rej, cur.rej);
         }
     }
-
 
     srst <- c(srst, apply(s.rej, 2, mean));
 

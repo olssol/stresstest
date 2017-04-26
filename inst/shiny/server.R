@@ -16,6 +16,11 @@ shinyServer(function(input, output, session) {
         tab.main();
     })
 
+    ##--------------------------------------
+    ##---------exit-------------------------
+    ##--------------------------------------
+    observeEvent(input$close, {stopApp()});
+
     ##------------------------------------
     ##---------simulation results---------
     ##------------------------------------
@@ -37,29 +42,43 @@ shinyServer(function(input, output, session) {
         on.exit(progress$close());
 
         methods <- get.consts()$designs;
-        rst     <- list();
+        rst     <- NULL;
         for (multi in 1:length(methods)) {
             progress$set(value  = (multi-1)/length(methods),
                          detail = names(get.consts()$designs)[multi]);
+
+            if ("mb" == methods[multi]) {
+                alpha.input <- rst[["bon.opt"]]$alpha3;
+            } else {
+                alpha.input <- NULL;
+            }
+
             rst[[methods[multi]]]  <- r.getn.bf(lpar$delta1,
                                                 lpar$delta2,
                                                 lpar$sigma,
                                                 lpar$pi1,
                                                 alpha  = lpar$alpha,
                                                 beta   = lpar$beta,
-                                                method = methods[multi]);
+                                                method = methods[multi],
+                                                alpha.input = alpha.input
+                                                );
         }
-
         userLog$lpar <- lpar;
         userLog$N    <- rst;
-
     }, ignoreInit=TRUE);
 
+    ## design details
     output$txtSmpSize <- renderText({
 
         multi <- input$inMulti;
-        lpar  <- get.par();
-        sn    <- get.N()[[multi]];
+        drst  <- get.N();
+
+        if (is.null(multi) | is.null(drst))
+            return(NULL);
+
+        sn <- get.N()[[multi]];
+        sp <- sn$pars;
+
         if ("bon" == multi) {
             rst <- sprintf("<h5> <p>To achieve %5.0f power at alpha level %5.3f,
                   with Bonferroni multiplicity control, a total of %5.0f subjects per arm
@@ -68,10 +87,10 @@ shinyServer(function(input, output, session) {
                   are needed for the overall population. </p><p> With the subgroup
                   1 proportion %5.2f, a total of <b>%5.0f</b> subjects per arm are needed to
                   achieve %5.0f%% power for all the hypothesis. </p> </h5>",
-                  100*(1-sn$beta), sn$alpha,
-                  sn$Nall[1], sn$Nall[2], sn$Nall[3], sn$pars['pi1'],
-                  sn$N, 100*(1-sn$beta));
-        } else {
+                  100*(1-sp['beta']), sp['alpha'],
+                  sn$Nall[1], sn$Nall[2], sn$Nall[3], sp['pi1'],
+                  sn$N, 100*(1-sp['beta']));
+        } else if ("bon.opt" == multi | "mb" == multi) {
             rst <- sprintf("<h5> <p>With %s multiplicity control,
                    a total of %5.0f subjects per arm
                    are needed for subgroup 1 to achieve %5.0f%% power at alpha level %5.3f,
@@ -83,15 +102,19 @@ shinyServer(function(input, output, session) {
                    achieve %5.0f%% power for all the hypothesis under the specific type I error level
                    and control the family-wise
                    type I error at %5.3f level </p> </h5>",
-                   sn$method,
-                   sn$Nall[1], 100*(1-sn$beta), sn$alpha3[1],
-                   sn$Nall[2], 100*(1-sn$beta), sn$alpha3[2],
-                   sn$Nall[3], 100*(1-sn$beta), sn$alpha3[3],
-                   sn$pars['pi1'], sn$N, 100*(1-sn$beta), sn$alpha);
+                   names(get.consts()$designs)[which(multi == get.consts()$designs)],
+                   sn$Nall[1], 100*(1-sp['beta']), sn$alpha3[1],
+                   sn$Nall[2], 100*(1-sp['beta']), sn$alpha3[2],
+                   sn$Nall[3], 100*(1-sp['beta']), sn$alpha3[3],
+                   sp['pi1'], sn$N, 100*(1-sp['beta']), sp['alpha']);
+        } else {
+            rst <- NULL;
         }
+
         rst
     })
 
+    ##results
     output$tblrst<- DT::renderDataTable({
                             get.simu.rst();
                         },

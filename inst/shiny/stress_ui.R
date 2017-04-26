@@ -10,9 +10,10 @@ get.consts <- reactive({
                     "Bias2", "MSE2", "SD2",
                     "BiasC", "MSEC", "SDC",
                     "Rej1", "Rej2", "RejC", "RejAny"),
-         designs=c("Bonferroni" = "bon",
+         designs=c("Bonferroni"           = "bon",
                    "Optimized Bonferroni" = "bon.opt",
-                   "Optimized M-B" = "mb"))
+                   "Optimized MB"         = "mb"
+                   ))
 })
 
 ##----------------------------------------------------------------------------
@@ -54,10 +55,10 @@ tab.setting <- reactive({
                             ),
                      column(4,
                             h4("Sample Size"),
-                            div(actionButton("btnSize", "Compute"),
-                                style="margin-bottom:10px"),
                             radioButtons(inputId = "inMulti", label="Multiplicity adjustment",
                                          choices = get.consts()$designs),
+                            div(actionButton("btnSize", "Compute"),
+                                style="margin-bottom:10px"),
                             htmlOutput("txtSmpSize")
                             )
                  )),
@@ -146,6 +147,7 @@ get.allpi <- reactive({
 
 ##get utility without bcratio
 get.simu.rst <- reactive({
+
     if (is.null(input$btnRst))
         return(NULL);
 
@@ -154,15 +156,14 @@ get.simu.rst <- reactive({
 
     isolate({
         sizen  <- get.N();
-        lpar   <- get.par();
         all.pi <- get.allpi();
 
         if (1 == input$inH0) {
             delta1 <- 0;
             delta2 <- 0;
         } else {
-            delta1 <- lpar$delta1;
-            delta2 <- lpar$delta2;
+            delta1 <- sizen[[1]]$pars["delta1"];
+            delta2 <- sizen[[1]]$pars["delta2"];
         }
 
         ##Create a Progress object
@@ -186,13 +187,15 @@ get.simu.rst <- reactive({
                                                sizen[[j]]$N,
                                                all.pi[i],
                                                sigma  = sizen[[j]]$pars['sigma'],
-                                               method = sizen[[j]]$method);
+                                               method = sizen[[j]]$method,
+                                               rej.regions = sizen[[j]]$rej.regions);
                 rst <- rbind(rst,
                              c(names(sizen)[j],
                                all.pi[i],
                                cur.rst));
             }
         }
+
         colnames(rst) <- get.consts()$rstnames;
         rst           <- data.frame(rst);
     })

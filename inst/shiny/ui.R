@@ -22,7 +22,16 @@ shinyUI(
               ##title box
               withTags({
                   div(class="cheader",
-                      "Clinical Trial Design Robustness Stress Test")
+                      "Clinical Trial Design Robustness Stress Test",
+                      tags$button(
+                               id = 'close',
+                               type = "button",
+                               class = "btn action-button",
+                               onclick = "setTimeout(function(){window.close();},500);",
+                               "Exit",
+                               style="float: right;
+                                      background-image: url(texturebg2.jpg);"
+                           ))
               }),
 
               ##main page
@@ -30,7 +39,6 @@ shinyUI(
 
               ##foot
               withTags({
-                  div(class="cfooter", "OLSSOL Project")
-              })
+                  div(class="cfooter", "OLSSOL Project")})
               )
 )
