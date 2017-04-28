@@ -8,7 +8,7 @@
 #' @importFrom grDevices colors
 #' @importFrom graphics axis box legend lines par plot points text
 #' @importFrom mvtnorm pmvnorm
-#' @importFrom parallet mclapply
+#' @importFrom parallel mclapply
 #'
 #' @import ggplot2
 #'
