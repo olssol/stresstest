@@ -183,7 +183,9 @@ IfPowerSatisfy.fix.alpha <- function(pi.1, delta1, delta2, sigma, N, beta, alpha
                         for (i in 1:number.of.cube){
                                 lower <- shape[[i]][,1]
                                 upper <- shape[[i]][,2]
-                                area <- area + pmvnorm(lower = lower, upper = upper, mean = mu[,(as.numeric(j)+1)], sigma = Sigma,algorithm=GenzBretz(abseps = 10^-10 ,maxpts=10^5))
+                                area <- area + mvtnorm::pmvnorm(lower = lower, upper = upper,
+                                                                mean = mu[,(as.numeric(j)+1)], sigma = Sigma,
+                                                                algorithm=mvtnorm::GenzBretz(abseps = 10^-10 ,maxpts=10^5))
                         }
                         return(as.numeric(area))
                 }

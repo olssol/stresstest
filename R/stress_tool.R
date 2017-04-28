@@ -85,7 +85,8 @@ get.planned.size <- function(delta, sigma, alpha=0.05, beta=0.2, rr=1) {
 }
 
 
-##optimized and typical bonferonni
+#' optimized and typical bonferonni
+#' @export
 r.getn.bf <- function(delta1, delta2, sigma, pi1,
                       method = c("bon", "bon.opt", "mb"),
                       alpha=0.05,
