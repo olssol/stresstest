@@ -200,6 +200,9 @@ IfPowerSatisfy.fix.alpha <- function(pi.1, delta1, delta2, sigma, N, beta, alpha
 }
 
 
+#' FUNCTION:
+#' @export
+
 SampleSizeMB.fix.alpha <- function(pi.1,delta.1,delta.2,sigma,alpha,beta,alpha.input){
         SampleSizeBon <- function(pi.1,delta.1,delta.2,sigma,alpha,beta){
                 alpha <- alpha/2
@@ -239,6 +242,7 @@ SampleSizeMB.fix.alpha <- function(pi.1,delta.1,delta.2,sigma,alpha,beta,alpha.i
 }
 
 ###################simulation
+
 
 ###FUNCTION: calculate rejection region
 RejRegion <- function(alpha.star,j){
@@ -378,7 +382,11 @@ RejRegion <- function(alpha.star,j){
         rej.region
 }
 
-###FUNCTION: if z statistics fall in the rejection region
+
+#' FUNCTION: if z statistics fall in the rejection region
+#' @export
+
+
 IfInRejRegion <- function(rej.region,z){
         IfinCube <- function(i){
                 cube <- rej.region[[i]]

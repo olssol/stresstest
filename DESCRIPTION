@@ -8,3 +8,4 @@ Imports: shiny (>= 1.0), shinythemes, DT, sqldf, parallel, ggplot2 (>= 2.2.1), m
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 6.0.1
