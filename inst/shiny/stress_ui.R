@@ -51,7 +51,8 @@ tab.setting <- reactive({
                                         value = 0.8, min = 0, max = 1, step = 0.05),
                             radioButtons(inputId = "inH0", label="Simulation Scenario",
                                          choices = c("Under global null hypothesis" = 1,
-                                                     "Under alternative hypothesis" = 2))
+                                                     "Under alternative hypothesis" = 2),
+                                         selected = 2)
                             ),
                      column(4,
                             h4("Sample Size"),
@@ -71,11 +72,8 @@ tab.setting <- reactive({
                                         value = 0.1, min = 0, max = 0.5, step = 0.01),
                             sliderInput(inputId = "inNP",
                                         label="Number of grids",
-                                        value = 50, min = 10, max = 1000, step = 1)
-                            )
-                 )),
-             wellPanel(
-                 fluidRow(
+                                        value = 10, min = 5, max = 50, step = 1)
+                            ),
                      column(4,
                             h4("Other"),
                             sliderInput(inputId = "inNCore", label="Number of cores",
@@ -84,8 +82,8 @@ tab.setting <- reactive({
                             sliderInput(inputId = "inNRep", label="Number of replications",
                                         value = 1000, min = 100, max = 10000, step = 100)
                             )
-                 )
-             ))
+                 ))
+             )
 })
 
 tab.rst <- reactive({
@@ -100,8 +98,11 @@ tab.rst <- reactive({
                                         choices = get.consts()$rstnames[-(1:2)])),
                      column(9,
                             plotOutput("pltrst"))
-                 ),
-                 DT::dataTableOutput("tblrst")
+                 )
+             ),
+             wellPanel(
+                 h4("Power Loss"),
+                 plotOutput("pltpower")
              ))
 })
 
@@ -114,7 +115,9 @@ tab.main <- reactive({
                    tab.rst(),
                    tabPanel("Download",
                             wellPanel(h4("Download Simulation Results"),
-                                      downloadButton('btnRstDload')))
+                                      downloadButton('btnRstDload')),
+                            DT::dataTableOutput("tblrst")
+                            )
                    );
     ##generate
     do.call(tabsetPanel, panels);
@@ -172,32 +175,14 @@ get.simu.rst <- reactive({
         ##Close the progress when this reactive exits (even if there's an error)
         on.exit(progress$close());
 
-        rst <- NULL;
-        for (j in 1:length(sizen)) {
-            for (i in 1:length(all.pi)) {
-                progress$set(value  = (length(all.pi)*(j-1)+i)/length(sizen)/length(all.pi),
-                             detail = paste(names(sizen)[[j]],
-                                          ", ",
-                                          "pi=", all.pi[i], sep=""));
-
-                cur.rst <- simu.single.setting(n.rep=input$inNRep,
-                                               alpha=sizen[[j]]$alpha3,
-                                               delta1,
-                                               delta2,
-                                               sizen[[j]]$N,
-                                               all.pi[i],
-                                               sigma  = sizen[[j]]$pars['sigma'],
-                                               method = sizen[[j]]$method,
-                                               rej.regions = sizen[[j]]$rej.regions);
-                rst <- rbind(rst,
-                             c(names(sizen)[j],
-                               all.pi[i],
-                               cur.rst));
-            }
-        }
-
-        colnames(rst) <- get.consts()$rstnames;
-        rst           <- data.frame(rst);
+        rst <- stSimu(sizen,
+                      all.pi,
+                      progress,
+                      cnames  = get.consts()$rstnames,
+                      n.rep   = input$inNRep,
+                      delta1  = delta1,
+                      delta2  = delta2,
+                      n.cores = input$inNCore);
     })
 })
 

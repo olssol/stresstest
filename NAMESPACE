@@ -2,8 +2,13 @@
 
 export(IfInRejRegion)
 export(SampleSizeMB.fix.alpha)
+export(stDesign)
+export(stPlot)
+export(stPlotStress)
 export(stShiny)
+export(stSimu)
 import(ggplot2)
+import(stats)
 importFrom(grDevices,colors)
 importFrom(graphics,axis)
 importFrom(graphics,box)

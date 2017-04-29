@@ -11,6 +11,7 @@
 #' @importFrom parallel mclapply
 #'
 #' @import ggplot2
+#' @import stats
 #'
 #' @description
 #'

@@ -48,20 +48,20 @@ shinyServer(function(input, output, session) {
                          detail = names(get.consts()$designs)[multi]);
 
             if ("mb" == methods[multi]) {
-                alpha.input <- rst[["bon.opt"]]$alpha3;
+                alpha.input <- rst[["bon.opt"]]$alpha3[c(3,1:2)]/2;
             } else {
                 alpha.input <- NULL;
             }
 
-            rst[[methods[multi]]]  <- r.getn.bf(lpar$delta1,
-                                                lpar$delta2,
-                                                lpar$sigma,
-                                                lpar$pi1,
-                                                alpha  = lpar$alpha,
-                                                beta   = lpar$beta,
-                                                method = methods[multi],
-                                                alpha.input = alpha.input
-                                                );
+            rst[[methods[multi]]]  <- stDesign(lpar$delta1,
+                                               lpar$delta2,
+                                               lpar$sigma,
+                                               lpar$pi1,
+                                               alpha  = lpar$alpha,
+                                               beta   = lpar$beta,
+                                               method = methods[multi],
+                                               alpha.input = alpha.input
+                                               );
         }
         userLog$lpar <- lpar;
         userLog$N    <- rst;
@@ -114,13 +114,6 @@ shinyServer(function(input, output, session) {
         rst
     })
 
-    ##results
-    output$tblrst<- DT::renderDataTable({
-                            get.simu.rst();
-                        },
-                        rownames=NULL,
-                        options=list(pageLength=100,
-                                     scrollX=TRUE))
 
     output$pltrst <- renderPlot({
         cur.rst <- get.simu.rst();
@@ -128,13 +121,31 @@ shinyServer(function(input, output, session) {
             return(NULL);
 
         cur.var <- input$inVarName;
-        plot.rst(cur.rst, cur.var);
+        stPlot(cur.rst, cur.var);
     }, bg="transparent")
 
+
+    output$pltpower <- renderPlot({
+        cur.rst <- get.simu.rst();
+        if (is.null(cur.rst))
+            return(NULL);
+        if (1 == input$inH0)
+            return(NULL);
+
+        stPlotStress(cur.rst, power=1-userLog$lpar$beta, cex.main=1.3, cex.lab = 1.3, mar=c(4,4,2,1));
+    }, bg="transparent")
 
     ##------------------------------------
     ##---------download-------------------
     ##------------------------------------
+
+    ##results
+    output$tblrst<- DT::renderDataTable({
+                            get.simu.rst();
+                        },
+                        rownames=NULL,
+                        options=list(pageLength=100,
+                                     scrollX=TRUE))
 
     ##download result data
     output$btnRstDload <- downloadHandler(
