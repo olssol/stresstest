@@ -76,8 +76,10 @@ stDesign <- function(delta1, delta2, sigma, pi1,
                                         delta.2 = delta2,
                                         sigma   = sigma,
                                         alpha   = alpha,
-                                        beta    = beta,
+                                        beta    = 1-beta,
                                         alpha.input = alpha.input)$sample.size;
+        ##per arm
+        cur.n <- ceiling(cur.n/2);
         rej.regions <- NULL;
         for (j in c("0", "1", "2")) {
             rej.regions[[j]] <- RejRegion(alpha.input, j);

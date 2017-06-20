@@ -25,47 +25,19 @@ shinyServer(function(input, output, session) {
     ##---------simulation results---------
     ##------------------------------------
 
-    observeEvent(input$btnSize, {
+    output$uiRst <- renderUI({
 
-        lpar <- list(delta1 = input$inDelta1,
-                     delta2 = input$inDelta2,
-                     sigma  = input$inSigma,
-                     alpha  = as.numeric(input$inAlpha),
-                     beta   = 1 - input$inPower,
-                     pi1    = input$inPi
-                     );
+        cur.rst <- get.simu.rst();
+        if (is.null(cur.rst))
+            return(NULL);
 
-        ##Create a Progress object
-        progress <- shiny::Progress$new(session, min=0, max=1);
-        progress$set(message = "Computation in progress...", value=0);
-        ##Close the progress when this reactive exits (even if there's an error)
-        on.exit(progress$close());
-
-        methods <- get.consts()$designs;
-        rst     <- NULL;
-        for (multi in 1:length(methods)) {
-            progress$set(value  = (multi-1)/length(methods),
-                         detail = names(get.consts()$designs)[multi]);
-
-            if ("mb" == methods[multi]) {
-                alpha.input <- rst[["bon.opt"]]$alpha3[c(3,1:2)]/2;
-            } else {
-                alpha.input <- NULL;
-            }
-
-            rst[[methods[multi]]]  <- stDesign(lpar$delta1,
-                                               lpar$delta2,
-                                               lpar$sigma,
-                                               lpar$pi1,
-                                               alpha  = lpar$alpha,
-                                               beta   = lpar$beta,
-                                               method = methods[multi],
-                                               alpha.input = alpha.input
-                                               );
-        }
-        userLog$lpar <- lpar;
-        userLog$N    <- rst;
-    }, ignoreInit=TRUE);
+        div(
+            wellPanel(
+                h4("Power Loss"),
+                msg.box("The shaded area represents the stress-test failure zone."),
+                plotOutput("pltpower")
+            ))
+    })
 
     ## design details
     output$txtSmpSize <- renderText({
@@ -132,7 +104,7 @@ shinyServer(function(input, output, session) {
         if (1 == input$inH0)
             return(NULL);
 
-        stPlotStress(cur.rst, power=1-userLog$lpar$beta, cex.main=1.3, cex.lab = 1.3, mar=c(4,4,2,1));
+        stPlotStress(cur.rst, power=1-userLog$lpar$beta, cex=1.3, mar=c(4,4,2,1));
     }, bg="transparent")
 
     ##------------------------------------
