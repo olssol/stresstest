@@ -72,17 +72,6 @@ tab.advanced <- reactive({
                             )
                  )),
              wellPanel(
-                 fluidRow(
-                     column(3,
-                            h4("Sample Size"),
-                            radioButtons(inputId = "inMulti", label="Multiplicity adjustment",
-                                         choices = get.consts()$designs)
-                            ##div(actionButton("btnSize", "Compute"),
-                            ##    style="margin-bottom:10px"),
-                            ),
-                     column(6, htmlOutput("txtSmpSize"))
-                 )),
-             wellPanel(
                  h4("Overall Results"),
                  fluidRow(
                      column(3,

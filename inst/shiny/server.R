@@ -35,24 +35,36 @@ shinyServer(function(input, output, session) {
             wellPanel(
                 h4("Power Loss"),
                 msg.box("The shaded area represents the stress-test failure zone."),
-                plotOutput("pltpower")
-            ))
+                plotOutput("pltpower")),
+            wellPanel(
+                h4("Sample Size"),
+                htmlOutput("txtSmpSize")
+                ##fluidRow(
+                ##column(3,
+                ##radioButtons(inputId = "inMulti", label="Multiplicity adjustment",
+                ##             choices = get.consts()$designs)
+                ##div(actionButton("btnSize", "Compute"),
+                ##    style="margin-bottom:10px"),
+                ##       ),
+                ##column(6, htmlOutput("txtSmpSize"))
+            )
+        )
     })
 
     ## design details
     output$txtSmpSize <- renderText({
 
-        multi <- input$inMulti;
+        ##multi <- input$inMulti;
         drst  <- get.N();
 
-        if (is.null(multi) | is.null(drst))
+        if (is.null(drst))
             return(NULL);
 
-        sn <- get.N()[[multi]];
-        sp <- sn$pars;
-
-        if ("bon" == multi) {
-            rst <- sprintf("<h5> <p>To achieve %5.0f power at alpha level %5.3f,
+        multi   <- "bon";
+        sn      <- get.N()[[multi]];
+        sp      <- sn$pars;
+        rst.bon <- sprintf("<h6>Bonferroni with Equal Alpha Allocation (bon)</h6>
+                  <h5> <p>To achieve %5.0f power at alpha level %5.3f,
                   with Bonferroni multiplicity control, a total of %5.0f subjects per arm
                   are needed for subgroup 1, a total of %5.0f subjects per arm
                   are needed for subgroup 2, and a total of %5.0f subjects per arm
@@ -62,8 +74,12 @@ shinyServer(function(input, output, session) {
                   100*(1-sp['beta']), sp['alpha'],
                   sn$Nall[1], sn$Nall[2], sn$Nall[3], sp['pi1'],
                   sn$N, 100*(1-sp['beta']));
-        } else if ("bon.opt" == multi | "mb" == multi) {
-            rst <- sprintf("<h5> <p>With %s multiplicity control,
+
+        multi   <- "bon.opt";
+        sn      <- get.N()[[multi]];
+        sp      <- sn$pars;
+        rst.opt <- sprintf("<h6>Bonferroni with Optimized(Unequal) Alpha Allocation (bon.opt)</h6>
+                   <h5> <p>With %s multiplicity control,
                    a total of %5.0f subjects per arm
                    are needed for subgroup 1 to achieve %5.0f%% power at alpha level %5.3f,
                    a total of %5.0f subjecs per arm
@@ -79,11 +95,32 @@ shinyServer(function(input, output, session) {
                    sn$Nall[2], 100*(1-sp['beta']), sn$alpha3[2],
                    sn$Nall[3], 100*(1-sp['beta']), sn$alpha3[3],
                    sp['pi1'], sn$N, 100*(1-sp['beta']), sp['alpha']);
-        } else {
-            rst <- NULL;
-        }
 
-        rst
+        multi   <- "mb";
+        sn      <- get.N()[[multi]];
+        sp      <- sn$pars;
+        rst.mb  <- sprintf("<h6>Improved Optimized Bonferroni (mb)</h6>
+                   <p>Reference: Maurer, W., and Bretz, F. (2013) Multiple testing in group sequential
+                   trials using graphical approaches. Statistics in Biopharmaceutical
+                   Research 5(4), 311-320. <a href='http://dx.doi.org/10.1080/19466315.2013.807748'>Link</a></p>
+                   <h5> <p>With %s multiplicity control,
+                   a total of %5.0f subjects per arm
+                   are needed for subgroup 1 to achieve %5.0f%% power at alpha level %5.3f,
+                   a total of %5.0f subjecs per arm
+                   are needed for subgroup 2 to achieve %5.0f%% power at alpha level %5.3f,
+                   and a total of %5.0f subjects per arm
+                   are needed for the overall population to achieve %5.0f%% power at alpha level %5.3g. </p>
+                   <p> With the subgroup 1 proportion %5.2f, a total of <b>%5.0f</b> subjects per arm are needed to
+                   achieve %5.0f%% power for all the hypothesis under the specific type I error level
+                   and control the family-wise
+                   type I error at %5.3f level </p> </h5>",
+                   names(get.consts()$designs)[which(multi == get.consts()$designs)],
+                   sn$Nall[1], 100*(1-sp['beta']), sn$alpha3[1],
+                   sn$Nall[2], 100*(1-sp['beta']), sn$alpha3[2],
+                   sn$Nall[3], 100*(1-sp['beta']), sn$alpha3[3],
+                   sp['pi1'], sn$N, 100*(1-sp['beta']), sp['alpha']);
+
+        c(rst.bon, rst.opt, rst.mb);
     })
 
 
