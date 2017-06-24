@@ -63,7 +63,7 @@ shinyServer(function(input, output, session) {
         multi   <- "bon";
         sn      <- get.N()[[multi]];
         sp      <- sn$pars;
-        rst.bon <- sprintf("<h6>Bonferroni with Equal Alpha Allocation (bon)</h6>
+        rst.bon <- sprintf("<h6>Bonferroni with Equal Alpha Allocation</h6>
                   <h5> <p>To achieve %5.0f power at alpha level %5.3f,
                   with Bonferroni multiplicity control, a total of %5.0f subjects per arm
                   are needed for subgroup 1, a total of %5.0f subjects per arm
@@ -78,7 +78,7 @@ shinyServer(function(input, output, session) {
         multi   <- "bon.opt";
         sn      <- get.N()[[multi]];
         sp      <- sn$pars;
-        rst.opt <- sprintf("<h6>Bonferroni with Optimized(Unequal) Alpha Allocation (bon.opt)</h6>
+        rst.opt <- sprintf("<h6>Bonferroni with Optimized(Unequal) Alpha Allocation</h6>
                    <h5> <p>With %s multiplicity control,
                    a total of %5.0f subjects per arm
                    are needed for subgroup 1 to achieve %5.0f%% power at alpha level %5.3f,
@@ -99,7 +99,7 @@ shinyServer(function(input, output, session) {
         multi   <- "mb";
         sn      <- get.N()[[multi]];
         sp      <- sn$pars;
-        rst.mb  <- sprintf("<h6>Improved Optimized Bonferroni (mb)</h6>
+        rst.mb  <- sprintf("<h6>Improved Optimized Bonferroni</h6>
                    <p>Reference: Maurer, W., and Bretz, F. (2013) Multiple testing in group sequential
                    trials using graphical approaches. Statistics in Biopharmaceutical
                    Research 5(4), 311-320. <a href='http://dx.doi.org/10.1080/19466315.2013.807748'>Link</a></p>
@@ -141,7 +141,12 @@ shinyServer(function(input, output, session) {
         if (1 == input$inH0)
             return(NULL);
 
-        stPlotStress(cur.rst, power=1-userLog$lpar$beta, cex=1.3, mar=c(4,4,2,1));
+        stPlotStress(cur.rst,
+                     power=1-userLog$lpar$beta,
+                     cex=1.3,
+                     mar=c(4,4,2,1),
+                     legends=get.consts()$designs);
+
     }, bg="transparent")
 
     ##------------------------------------

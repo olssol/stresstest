@@ -185,7 +185,7 @@ stPlot <- function(simu.rst, y.var, x.var = "Pi", n = 10) {
 #' Plot Results
 #'
 #' @export
-stPlotStress <- function(rst.d, power=0.8, ..., cols=c("blue", "red", "brown")) {
+stPlotStress <- function(rst.d, power=0.8, ..., cols=c("green", "red", "brown"), ltys=1:6, legends=NULL) {
     ss <- c("C" = "Power: Combined Pop. Null Hyp.",
             "1" = "Power: Subpop. 1 Null Hyp.",
             "2" = "Power: Subpop. 2 Null Hyp.");
@@ -241,12 +241,19 @@ stPlotStress <- function(rst.d, power=0.8, ..., cols=c("blue", "red", "brown")) 
         for (j in 1:length(vec.method)) {
             cur.p  <- cur.lst[[j]]$cur.p;
             cur.lo <- cur.lst[[j]]$cur.lo;
-            lines(cur.p, predict(cur.lo, cur.p), lty=1, lwd=2, col=cols[j]);
+            lines(cur.p, predict(cur.lo, cur.p), lwd=2, col=cols[j], lty=ltys[j]);
+        }
+
+        ##legend
+        if (is.null(legends)) {
+            lgnd <- vec.method;
+        } else {
+            lgnd <- sapply(vec.method, function(x) { names(legends)[which(x == legends)] });
         }
 
         if ("C" == i)
-            legend("bottomleft", legend=vec.method,
-                   lty = 1,
+            legend("bottomleft", legend=lgnd,
+                   lty = ltys,
                    col = cols, lwd=2, cex=1.1, bty="n");
     }
 }

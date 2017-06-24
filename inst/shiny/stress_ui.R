@@ -10,11 +10,14 @@ get.consts <- reactive({
                     "Bias2", "MSE2", "SD2",
                     "BiasC", "MSEC", "SDC",
                     "Rej1", "Rej2", "RejC", "RejAny"),
-         designs=c("Bonferroni"           = "bon",
-                   "Optimized Bonferroni" = "bon.opt",
-                   "Optimized MB"         = "mb"
+         designs=c("Bonferroni (equal alpha)"       = "bon",
+                   "Bonferroni (optimized alpha)"   = "bon.opt",
+                   "Maurer Bretz (optimized alpha)" = "mb"
                    ))
 })
+
+
+
 
 ##-------------------------------------------------------------
 ##           UI DEFINITIONS
@@ -208,7 +211,6 @@ get.sample.sizes <- function(lpar, methods){
 }
 
 
-##get utility without bcratio
 get.simu.rst <- reactive({
 
     if (is.null(input$btnRst))
